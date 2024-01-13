@@ -1,0 +1,192 @@
+C51 COMPILER V9.60.7.0   LCD1602_FUNC                                                      01/12/2024 15:34:17 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE LCD1602_FUNC
+OBJECT MODULE PLACED IN .\Objects\LCD1602_func.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE LCD1602\LCD1602_func.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\public;.\UART;.\I
+                    -RED;.\LCD1602) DEBUG OBJECTEXTEND PRINT(.\Listings\LCD1602_func.lst) TABS(2) OBJECT(.\Objects\LCD1602_func.obj)
+
+line level    source
+
+   1          #include "LCD1602_func.h"
+   2          #include "STRING.H"
+   3          #include "INTRINS.H"
+   4          
+   5          sbit LCD_RS = P2^6;
+   6          sbit LCD_WR = P2^5;
+   7          sbit LCD_EN = P2^7;
+   8          
+   9          sbit D7 = P0^7;
+  10          #define LCD_DATA_PORT P0
+  11          
+  12          struct LCD1602_Cursor cursor; // record the cursor location 
+  13          
+  14          void LCD1602_Write_Cmd(u8 cmd){
+  15   1          LCD_EN = 0;
+  16   1          _nop_();
+  17   1          LCD_RS = 0;
+  18   1          _nop_();
+  19   1          LCD_WR = 0;
+  20   1          _nop_();
+  21   1          LCD_DATA_PORT = cmd;
+  22   1          Delay(1); // wait for 1ms 
+  23   1          LCD_EN = 1;
+  24   1          Delay(1);
+  25   1          LCD_EN = 0;
+  26   1          _nop_();
+  27   1      }
+  28          
+  29          void LCD1602_Write_Dat(u8 dat){
+  30   1          LCD_EN = 0; // create 
+  31   1          _nop_();
+  32   1          LCD_RS = 1;   // data mode 
+  33   1          _nop_();
+  34   1          LCD_WR = 0;   // write data
+  35   1          _nop_();
+  36   1          LCD_DATA_PORT = dat;
+  37   1          Delay(1);     // wait for 1ms after set port
+  38   1          LCD_EN = 1;
+  39   1          Delay(1);
+  40   1          LCD_EN = 0;
+  41   1          _nop_();
+  42   1      }
+  43          
+  44          // must be 0x38 for current LED 
+  45          void LCD1602_SetFunc(u8 func){
+  46   1          LCD1602_Write_Cmd(func);
+  47   1      }
+  48          
+  49          // open normally as 0x0c, close as 0x08 but can set more 
+  50          void LCD1602_SetDisp(u8 disp){
+  51   1          LCD1602_Write_Cmd(disp);
+  52   1      }
+  53          
+  54          // 0x06 as default -> cursor move right after write data 
+C51 COMPILER V9.60.7.0   LCD1602_FUNC                                                      01/12/2024 15:34:17 PAGE 2   
+
+  55          void LCD1602_SetMode(u8 mode){
+  56   1          LCD1602_Write_Cmd(mode);
+  57   1      }
+  58          
+  59          void LCD1602_ClearScreen(void){
+  60   1          LCD1602_Write_Cmd(0x01);
+  61   1          Delay(4);   // need 160 ms to init
+  62   1      }
+  63          
+  64          /// @brief Init LCD1602
+  65          /// @param Func must be 0x38 for current LED 
+  66          /// @param Disp open normally as 0x0c, close as 0x08 but can set more 
+  67          /// @param Mode  0x06 as cursor move right after write data
+  68          void LCD1602_Init(Func, Disp,  Mode){
+  69   1          LCD_EN = 0;
+  70   1          cursor.x = 0; cursor.y = 0;
+  71   1          LCD1602_SetFunc(Func);  // must set function first 
+  72   1          LCD1602_SetDisp(Disp);
+  73   1          LCD1602_SetMode(Mode);  // cursor move and screen move 
+  74   1          // Clear Screen
+  75   1          LCD1602_ClearScreen();
+  76   1          // firstly write the address
+  77   1      }
+  78          
+  79          void LCD1602_WriteCode(u8 addr, u8 ASCII_code){
+  80   1          LCD1602_Write_Cmd(0x80|addr);
+  81   1          Delay10us(5);
+  82   1          LCD1602_Write_Dat(ASCII_code);  // not need use 
+  83   1          Delay10us(5);
+  84   1      }
+  85          
+  86          // x from 0 to 15, y from 0 to 1 
+  87          void LCD1602_ShowChar(u8 x, u8 y, u8 ch){
+  88   1          // (all message shown through  show char)
+  89   1          u8 addr = 0x00;
+  90   1          if (x > 15) return;
+  91   1          if (y == 0) {
+  92   2              addr += x;
+  93   2              LCD1602_WriteCode(addr, ch);
+  94   2          }else if (y == 1){
+  95   2              addr = 0x40 + x;
+  96   2              LCD1602_WriteCode(addr, ch);
+  97   2          }
+  98   1          cursor.x = x+1;
+  99   1          cursor.y = y;
+ 100   1      }
+ 101          
+ 102          // x = 0-15,  y= 0 or 1, str is string 
+ 103          void LCD1602_ShowStr(u8 x, u8 y, char* str){
+ 104   1          u8 i;
+ 105   1          u8 len = strlen(str);
+ 106   1          if (x + len > 16) return; // too long !!
+ 107   1          for (i = 0; i < len; i++){
+ 108   2              LCD1602_ShowChar(x + i, y, str[i]);
+ 109   2          }
+ 110   1      }
+ 111          
+ 112          struct LCD1602_Cursor LCD1602_GetCursor(void){
+ 113   1          return cursor;
+ 114   1      }
+ 115          
+ 116          // 0 move left, 1 move right;
+C51 COMPILER V9.60.7.0   LCD1602_FUNC                                                      01/12/2024 15:34:17 PAGE 3   
+
+ 117          void LCD1602_MoveCursor(u8 direction){
+ 118   1          if (direction == 0){
+ 119   2              if (cursor.x <= 0) return;
+ 120   2              LCD1602_Write_Cmd(0x10);
+ 121   2              cursor.x --;
+ 122   2          }else if (direction ==1){
+ 123   2              if (cursor.x >= 16) return; // maximum 16;
+ 124   2              LCD1602_Write_Cmd(0x14);
+ 125   2              cursor.x ++;
+ 126   2          }
+ 127   1      }
+ 128          
+ 129          u8 LCD1602_Read_Dat(){
+ 130   1          u8 res = 0x00;
+ 131   1          LCD_EN = 0;
+ 132   1          _nop_();
+ 133   1          LCD_RS = 1;  // data
+ 134   1          _nop_();
+ 135   1          LCD_WR = 1;
+ 136   1          _nop_();
+ 137   1          res = LCD_DATA_PORT;
+ 138   1          Delay(1); // wait for 1ms 
+ 139   1          LCD_EN = 1;
+ 140   1          Delay(1);
+ 141   1          LCD_EN = 0;
+ 142   1          _nop_();
+ 143   1          return res;
+ 144   1      }
+ 145          
+ 146          // seldom used 
+ 147          u8 LCD1602_ReadDDROM(u8 addr){
+ 148   1          u8 res;
+ 149   1          LCD1602_Write_Cmd(addr); // output AC pointed data
+ 150   1          res = LCD1602_Read_Dat();
+ 151   1          return res;
+ 152   1      }
+ 153          
+ 154          
+ 155          
+ 156          // // if is busy return 1, automatically called 
+ 157          // u8 LCD1602_Busy(){
+ 158          //     LCD_RS = 0;
+ 159          //     _nop_();
+ 160          //     LCD_WR = 1;  // read mode;
+ 161          //     _nop_();
+ 162          //     if (D7) return 1;
+ 163          //     else return 0;
+ 164          // }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    358    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2      18
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

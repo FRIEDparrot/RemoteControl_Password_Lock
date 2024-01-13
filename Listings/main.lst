@@ -1,0 +1,142 @@
+C51 COMPILER V9.60.7.0   MAIN                                                              01/12/2024 15:38:29 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\public;.\UART;.\IRED;.\LCD1602) D
+                    -EBUG OBJECTEXTEND PRINT(.\Listings\main.lst) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REGX52.H>
+   2          #include <INTRINS.H>
+   3          #include "IRED_controller.h"
+   4          #include "LCD1602_func.h"
+   5          
+   6          u8 Power = 0;   // only can be operated when power = 1;
+   7          
+   8          u8 INPUT[10] = {' ', ' ', ' ', ' ',' ',' ',' ',' ',' ',' '};
+   9          
+  10          // set if cursor need to display (0 disp, 1 not)
+  11          void Cursor_Disp_Set(void){
+  12   1          struct LCD1602_Cursor cs;
+  13   1          cs = LCD1602_GetCursor();
+  14   1          if (cs.x < 4 || cs.x > 13) {
+  15   2              LCD1602_SetDisp(0x0c); // cursor not display -> also not display when loc = 13;
+  16   2          }else{
+  17   2              LCD1602_SetDisp(0x0f); // cursor display and blink
+  18   2          }
+  19   1      }
+  20          
+  21          void WriteData(u8 ch){
+  22   1          struct LCD1602_Cursor cs;
+  23   1          cs = LCD1602_GetCursor(); 
+  24   1          if (cs.x < 4 || cs.x > 13) return;
+  25   1          LCD1602_ShowChar(cs.x, cs.y, ch);
+  26   1          INPUT[cs.x - 4] = ch;
+  27   1      }
+  28          
+  29          
+  30          // restart as screen 
+  31          void PasswordLock_Restart(){
+  32   1          if (Power) {
+  33   2              LCD1602_Init(0x38, 0x0f, 0x06);
+  34   2              LCD1602_ShowStr(0,0, "Password:");
+  35   2              LCD1602_ShowStr(0,1, "    ");
+  36   2          }
+  37   1          else LCD1602_SetDisp(0x08);  // not
+  38   1      }
+  39          
+  40          // compare password, 0 failed , 1 success 
+  41          void CmpPassword(){
+  42   1          u8 cor , ans, *cmd = 0x00, i;
+  43   1          u8 password[10] = {'2','0','0','4','0','6','0','9',' ',' '};
+  44   1          
+  45   1          cor = 1;
+  46   1          for (i= 0; i < 10; i++){
+  47   2              if (INPUT[i]!= password[i]){
+  48   3                  cor = 0; break;
+  49   3              }
+  50   2          }
+  51   1      
+  52   1          switch (cor)
+  53   1          {
+  54   2          case 0: LCD1602_Init(0x38, 0x0c, 0x06); LCD1602_ShowStr(1, 0, "Unlock Failed!"); break;
+C51 COMPILER V9.60.7.0   MAIN                                                              01/12/2024 15:38:29 PAGE 2   
+
+  55   2          case 1: LCD1602_Init(0x38, 0x0c, 0x06); LCD1602_ShowStr(1, 0, "Unlock Succeed!"); break;
+  56   2          default: break;
+  57   2          }
+  58   1          LCD1602_ShowStr(0, 1, "use any btn exit");
+  59   1          
+  60   1          while (1){
+  61   2              ans = IRED_Get_Command(cmd);
+  62   2              if (ans) {
+  63   3                  PasswordLock_Restart();
+  64   3                  break;
+  65   3              }
+  66   2          }
+  67   1      }
+  68          
+  69          
+  70          void PasswordLock_Input(u8 control_code){
+  71   1          struct LCD1602_Cursor cs;
+  72   1          if (!Power && control_code!=0) return;
+  73   1          // check location after every time 
+  74   1          cs = LCD1602_GetCursor();
+  75   1      
+  76   1          switch (control_code)
+  77   1          {
+  78   2          case 0: Power = !Power; PasswordLock_Restart(); break;
+  79   2          case 4: if (cs.x > 4) { LCD1602_MoveCursor(0);} break; 
+  80   2          case 5: if (cs.x < 13){ LCD1602_MoveCursor(1);} break;
+  81   2          case 9: WriteData('0'); break;
+  82   2          case 10: PasswordLock_Restart(); break; // reset
+  83   2          case 11: CmpPassword();  break; // confirm and check the password 
+  84   2          case 12: WriteData('1'); break; 
+  85   2          case 13: WriteData('2'); break;
+  86   2          case 14: WriteData('3'); break;
+  87   2          case 15: WriteData('4'); break;
+  88   2          case 16: WriteData('5'); break; 
+  89   2          case 17: WriteData('6'); break;
+  90   2          case 18: WriteData('7'); break;
+  91   2          case 19: WriteData('8'); break;
+  92   2          case 20: WriteData('9'); break;
+  93   2          default: break; 
+  94   2          }
+  95   1          if (control_code!=0) Cursor_Disp_Set(); //-> when not 0 set cursor display state;
+  96   1      }
+  97          
+  98          void main(){
+  99   1          u8 ans = 0, *cmd = 0x00, codes = 0x00;
+ 100   1          IRED_INIT();
+ 101   1      
+ 102   1          LCD1602_Init(0x38, 0x08, 0x06);
+ 103   1          LCD1602_ShowStr(0,0, "Password:");
+ 104   1          LCD1602_ShowStr(0,1, "    "); // first location 0x44;
+ 105   1      
+ 106   1          while (1)
+ 107   1          {
+ 108   2              ans = IRED_Get_Command(cmd);
+ 109   2              if (ans) {
+ 110   3                  codes = IRED_CMD_Mapping(cmd, 1); // if use simulation, change it to 1
+ 111   3                  PasswordLock_Input(codes);
+ 112   3              }
+ 113   2          }
+ 114   1      }
+
+
+C51 COMPILER V9.60.7.0   MAIN                                                              01/12/2024 15:38:29 PAGE 3   
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    547    ----
+   CONSTANT SIZE    =     73    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     11      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

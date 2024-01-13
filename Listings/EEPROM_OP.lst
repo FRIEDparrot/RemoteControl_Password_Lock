@@ -1,0 +1,56 @@
+C51 COMPILER V9.60.7.0   EEPROM_OP                                                         01/12/2024 10:24:10 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE EEPROM_OP
+OBJECT MODULE PLACED IN .\Objects\EEPROM_OP.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE UART\EEPROM_OP.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\public;.\UART;.\IRED;.\
+                    -LCD1602) DEBUG OBJECTEXTEND PRINT(.\Listings\EEPROM_OP.lst) TABS(2) OBJECT(.\Objects\EEPROM_OP.obj)
+
+line level    source
+
+   1          #include "EEPROM_OP.h"
+   2          // RXD : P3_0, TXD : P3_1; 
+   3          void UART_INIT(){  // use double frequency 
+   4   1          // Init Timer 1 as mode 2, M0 = 0, M1 = 1; -> 
+   5   1          TMOD = 0x20;
+   6   1          TH1 = 0xFA; TL1 = 0xFA;  // init the timer 
+   7   1          // PCON configuration 
+   8   1          PCON = 0x80;
+   9   1          // SCON configuration  
+  10   1          EA = 1; ES = 1; // enable the series interruption (not need ET1))
+  11   1          SM0 = 0; SM1 = 1; REN = 1; // enable the receiver
+  12   1          TR1 = 1;        // start timer 1;
+  13   1      }
+  14          
+  15          void UART_FUNC() interrupt 4{ // send all to computer.
+  16   1          unsigned char msg = 0;
+  17   1          RI = 0; 
+  18   1          msg = SBUF;
+  19   1          SBUF = msg;
+  20   1          while(!TI); // wait for send the data ;
+  21   1          TI = 0;
+  22   1      }
+  23          
+  24          // Debug Message 
+  25          void UART_Debug(char* msg){
+  26   1          ES = 0; // disable the interruption when sending data.
+  27   1          TI = 1; // first, we enable the TI before 
+  28   1          printf(msg);
+  29   1          while (!TI); // wait for sending;
+  30   1          TI = 0;
+  31   1          ES = 1;
+  32   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     67    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

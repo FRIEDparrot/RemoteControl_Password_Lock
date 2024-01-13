@@ -1,0 +1,174 @@
+C51 COMPILER V9.60.7.0   IRED_CONTROLLER                                                   01/12/2024 15:34:17 PAGE 1   
+
+
+C51 COMPILER V9.60.7.0, COMPILATION OF MODULE IRED_CONTROLLER
+OBJECT MODULE PLACED IN .\Objects\IRED_controller.obj
+COMPILER INVOKED BY: E:\Keil5\C51\BIN\C51.EXE IRED\IRED_controller.c OPTIMIZE(8,SPEED) BROWSE INCDIR(.\public;.\UART;.\I
+                    -RED;.\LCD1602) DEBUG OBJECTEXTEND PRINT(.\Listings\IRED_controller.lst) TABS(2) OBJECT(.\Objects\IRED_controller.obj)
+
+line level    source
+
+   1          #include "IRED_controller.h"
+   2          #define IRED P3_2
+   3          
+   4          u8 Gired_Data[4] = {0x00,0x00,0x00,0x00};
+   5          
+   6          u8 Control_Code = 0x00;
+   7          u8 Received = 0; // if Received = 1, it means have new message received
+   8          
+   9          // receive the data of the remote control.
+  10          // enable the ired interruption (use interruption 0, P3_2) here.
+  11          void IRED_INIT(void){
+  12   1          // when the remote control is pushed, it becomes low voltage level
+  13   1          IT0 = 1;
+  14   1          EX0 = 1;
+  15   1          EA = 1;  // open the interruption
+  16   1          IRED=1;  // **initialize the port of IRED**
+  17   1      }
+  18          
+  19          void ired() interrupt 0 {
+  20   1        u8 i = 0,j = 0;
+  21   1          u16 time_cnt=0;
+  22   1          u8 ired_high_time=0; // set to high voltage level time 
+  23   1        if(IRED==0)
+  24   1        {
+  25   2              // 9ms low voltage level
+  26   2          time_cnt = 0;
+  27   2              while (!IRED) // wait for high voltage 
+  28   2              {
+  29   3                  Delay(1);
+  30   3                  time_cnt++;
+  31   3                  if (time_cnt > 10) {
+  32   4                      return; // if all are low, exit
+  33   4                  }
+  34   3              }
+  35   2              if (time_cnt < 8) return;  // delay 10us can cause great error   
+  36   2              // 4.5ms high voltage level 
+  37   2              time_cnt = 0;
+  38   2              while (IRED){ // wait for normal low voltage level
+  39   3                  Delay10us(1);
+  40   3                  time_cnt++;
+  41   3                  if (time_cnt > 500) return;
+  42   3              }
+  43   2              //=====start send code=============
+  44   2              // receive 8 digit address (32 digit, 4bytes)
+  45   2              for (i = 0; i < 4; i++){
+  46   3                  for (j = 0; j < 8; j++){
+  47   4                      time_cnt = 60;
+  48   4                      // use time_cnt to avoid disturb 
+  49   4                      while (!IRED){ // no more than 600ms delay 
+  50   5                          Delay10us(1);
+  51   5                          time_cnt--;
+  52   5                          if (time_cnt == 0) return;
+  53   5                      }; 
+  54   4                      // judge high voltage level time for 0 or 1 data 
+C51 COMPILER V9.60.7.0   IRED_CONTROLLER                                                   01/12/2024 15:34:17 PAGE 2   
+
+  55   4                      while (IRED){
+  56   5                          Delay10us(10); // test every 0.1ms
+  57   5                          ired_high_time ++;
+  58   5                          if (ired_high_time >= 20) return; // 2000 us
+  59   5                      }
+  60   4                      Gired_Data[i] >>= 1;
+  61   4                      if (ired_high_time >= 8){  // 800us width for judge
+  62   5                          Gired_Data[i] |= 0x80;
+  63   5                      }
+  64   4                      ired_high_time  = 0; // *** dont't forget reset the time !!!**
+  65   4                  }
+  66   3              }
+  67   2              // i = 0: address code ;  i = 1: address inverse code;
+  68   2              // i = 2: control code ;  i = 3; control inverse code; 
+  69   2              // test code validarity
+  70   2      
+  71   2              if ((Gired_Data[1] == ~Gired_Data[0]) && (Gired_Data[3] == ~Gired_Data[2])){
+  72   3                  Control_Code = Gired_Data[2]; // * is generate value from pointer 
+  73   3                  Received = 1;
+  74   3              }
+  75   2          }
+  76   1      }
+  77          
+  78          // input the command, if return 0 means not triggered,1 is triggered.
+  79          u8 IRED_Get_Command(u8 *cmd){
+  80   1          if (Received){
+  81   2              *cmd = Control_Code; // copy and paste the value
+  82   2              Received = 0;
+  83   2              return 1;
+  84   2          }
+  85   1          return 0;
+  86   1      }
+  87          
+  88          
+  89          // mode 0: real; mode 1: simulation -> give code from 0 to 20 as command
+  90          u8 IRED_CMD_Mapping(u8 *cmd, u8 mode){
+  91   1          u8 res = 0x00;
+  92   1          if (mode==0){
+  93   2              switch (*cmd)
+  94   2              {
+  95   3              case 0x45: res = 0;break;
+  96   3              case 0x46: res = 1;break;
+  97   3              case 0x47: res = 2;break;
+  98   3              case 0x44: res = 3;break;
+  99   3              case 0x40: res = 4;break;
+ 100   3              case 0x43: res = 5;break;
+ 101   3              case 0x07: res = 6;break;
+ 102   3              case 0x15: res = 7;break;
+ 103   3              case 0x09: res = 8;break;
+ 104   3              case 0x16: res = 9;break;
+ 105   3              case 0x19: res = 10;break;
+ 106   3              case 0x0d: res = 11;break;
+ 107   3              case 0x0C: res = 12;break;
+ 108   3              case 0x18: res = 13;break;
+ 109   3              case 0x5E: res = 14;break;
+ 110   3              case 0x08: res = 15;break;
+ 111   3              case 0x1C: res = 16;break;
+ 112   3              case 0x5A: res = 17;break;
+ 113   3              case 0x42: res = 18;break;
+ 114   3              case 0x52: res = 19;break;
+ 115   3              case 0x4A: res = 20;break;
+ 116   3              default: break;
+C51 COMPILER V9.60.7.0   IRED_CONTROLLER                                                   01/12/2024 15:34:17 PAGE 3   
+
+ 117   3              }
+ 118   2          }else{
+ 119   2              switch (*cmd)
+ 120   2              {
+ 121   3              case 0x12: res = 0;break;
+ 122   3              case 0x1A: res = 1;break;
+ 123   3              case 0x1E: res = 2;break;
+ 124   3              case 0x01: res = 3;break;
+ 125   3              case 0x02: res = 4;break;
+ 126   3              case 0x03: res = 5;break;
+ 127   3              case 0x04: res = 6;break;
+ 128   3              case 0x05: res = 7;break;
+ 129   3              case 0x06: res = 8;break;
+ 130   3              case 0x07: res = 9;break;
+ 131   3              case 0x08: res = 10;break;
+ 132   3              case 0x09: res = 11;break;
+ 133   3              case 0x0A: res = 12;break;
+ 134   3              case 0x1B: res = 13;break;
+ 135   3              case 0x1F: res = 14;break;
+ 136   3              case 0x0C: res = 15;break;
+ 137   3              case 0x0D: res = 16;break;
+ 138   3              case 0x0E: res = 17;break;
+ 139   3              case 0x00: res = 18;break;
+ 140   3              case 0x0F: res = 19;break;
+ 141   3              case 0x19: res = 20;break;
+ 142   3              default: break;
+ 143   3              }
+ 144   2          }
+ 145   1          return res;
+ 146   1      } 
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    653    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
