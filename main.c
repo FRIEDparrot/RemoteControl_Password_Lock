@@ -64,6 +64,9 @@ void CmpPassword(){
             break;
         }
     }
+    for (i = 0; i < 10; i++){ // reset
+        INPUT[i] = ' '; 
+    }
 }
 
 
