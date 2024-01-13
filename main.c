@@ -29,12 +29,16 @@ void WriteData(u8 ch){
 
 // restart as screen 
 void PasswordLock_Restart(){
+    int i ;
     if (Power) {
         LCD1602_Init(0x38, 0x0f, 0x06);
         LCD1602_ShowStr(0,0, "Password:");
         LCD1602_ShowStr(0,1, "    ");
     }
     else LCD1602_SetDisp(0x08);  // not
+    for (i = 0; i < 10; i++){ // reset
+        INPUT[i] = ' '; 
+    }
 }
 
 // compare password, 0 failed , 1 success 
