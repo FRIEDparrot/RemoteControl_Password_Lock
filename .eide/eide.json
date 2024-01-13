@@ -1,0 +1,96 @@
+{
+  "name": "LCD1602_remote_password_lock",
+  "type": "C51",
+  "dependenceList": [],
+  "srcDirs": [],
+  "virtualFolder": {
+    "name": "<virtual_root>",
+    "files": [],
+    "folders": [
+      {
+        "name": "IRED",
+        "files": [
+          {
+            "path": "IRED/IRED_controller.c"
+          }
+        ],
+        "folders": []
+      },
+      {
+        "name": "LCD1602",
+        "files": [
+          {
+            "path": "LCD1602/LCD1602_func.c"
+          }
+        ],
+        "folders": []
+      },
+      {
+        "name": "public",
+        "files": [
+          {
+            "path": "public/public.c"
+          }
+        ],
+        "folders": []
+      },
+      {
+        "name": "Source Group 1",
+        "files": [
+          {
+            "path": "main.c"
+          },
+          {
+            "path": "STARTUP.A51"
+          }
+        ],
+        "folders": []
+      },
+      {
+        "name": "UART",
+        "files": [
+          {
+            "path": "UART/EEPROM_OP.c"
+          }
+        ],
+        "folders": []
+      }
+    ]
+  },
+  "outDir": "build",
+  "deviceName": null,
+  "packDir": null,
+  "miscInfo": {
+    "uid": "ff8fb33c5dd76c2dd16f00c3ba32de48"
+  },
+  "targets": {
+    "Target 1": {
+      "excludeList": [],
+      "toolchain": "Keil_C51",
+      "compileConfig": {
+        "options": "null"
+      },
+      "uploader": "Custom",
+      "uploadConfig": {
+        "bin": "",
+        "commandLine": "",
+        "eraseChipCommand": ""
+      },
+      "uploadConfigMap": {},
+      "custom_dep": {
+        "name": "default",
+        "incList": [
+          "../../../Keil5/C51/INC/Atmel",
+          "public",
+          "IRED",
+          "LCD1602",
+          "UART"
+        ],
+        "libList": [],
+        "sourceDirList": [],
+        "defineList": []
+      }
+    }
+  },
+  "version": "3.3"
+}
